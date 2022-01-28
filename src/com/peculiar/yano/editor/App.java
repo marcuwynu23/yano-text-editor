@@ -9,6 +9,8 @@ import javax.swing.JTextArea;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.DocumentEvent;
 import javax.swing.text.Element;
+import javax.swing.text.*;
+import javax.swing.undo.*;
 
 public class App extends JFrame{
   static class UI{
@@ -19,11 +21,15 @@ public class App extends JFrame{
     private static final Color FG_COLOR = Color.WHITE;
     private static final String ICON_PATH = "/com/peculiar/yano/editor/icon.png";
   }
-  private Container ctpane;
   private JPanel menuPanel,statusPanel;
-
+  private Container ctpane;
   private MyTextArea textArea,lineArea;
-  public App(){
+  private JLabel statuslabel;
+  private String filePath;
+  private int fontSize = 12;
+
+  public App(String filePath){
+    this.filePath = filePath;
     try{
       UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
     }catch(Exception ex){
@@ -37,35 +43,43 @@ public class App extends JFrame{
     setComponents();
     setComponentUI();
     setComponentEvent();
-    setComponentLayout();
     setVisible(true);
   }
   private void setComponents(){
     ctpane = getContentPane();
-
     menuPanel = new JPanel();
     statusPanel = new JPanel();
-
     menuPanel.setBackground(new Color(33,33,33));
     statusPanel.setBackground(new Color(33,33,33));
 
-    textArea = new MyTextArea();
+    textArea = new MyTextArea(TextFileHandler.getTextFromFile(filePath));
     lineArea = new MyTextArea("1");
     lineArea.setEditable(false);
     lineArea.setMargin(new Insets(10,10,10,10));
+    
     textArea.setMargin(new Insets(10,10,10,10));
+    textArea.setCaretColor(Color.WHITE);
+    textArea.setTabSize(2);
+    textArea.setLineWrap(true);
+    textArea.setWrapStyleWord(true);
     textArea.getDocument().addDocumentListener(new MyDocumentListener(textArea,lineArea));
 
 
 
-    textArea.setFont(new Font("Consolas",1,14));
-    lineArea.setFont(new Font("Consolas",1,14));
+    textArea.setFont(new Font("Consolas",1,fontSize));
+    lineArea.setFont(new Font("Consolas",1,fontSize));
 
     var jsp = new JScrollPane();
     jsp.setBorder(BorderFactory.createEmptyBorder());
     jsp.setRowHeaderView(lineArea);
     jsp.getViewport().add(textArea);
     
+
+    statuslabel = new JLabel("Name: "+filePath +" "+"Size: "+TextFileHandler.getFileSize(filePath));
+    statuslabel.setFont(new Font("Consolas",1,14));
+    statuslabel.setForeground(Color.WHITE);
+    statusPanel.setLayout(new FlowLayout(FlowLayout.LEFT));
+    statusPanel.add(statuslabel);
 
 
     ctpane.setLayout(new BorderLayout());
@@ -81,12 +95,70 @@ public class App extends JFrame{
     lineArea.setBackground(new Color(35,35,35));
     lineArea.setForeground(UI.FG_COLOR);
   }
-  private void setComponentEvent(){
-
+  private boolean isClickSave(KeyEvent e){
+    return e.isControlDown() && e.getKeyChar() != 's' && e.getKeyCode() == 83;
   }
-  private void setComponentLayout(){
 
-  }  
+  private boolean isFontMinimize(KeyEvent e){
+    return e.isControlDown() && e.getKeyChar() != '-' && e.getKeyCode() == 45;
+  }
+
+  private boolean isFontMaximize(KeyEvent e){
+    return e.isControlDown() && e.getKeyChar() != '+' && e.getKeyCode() == 61;
+  }
+
+  private void fontResize(int type){
+    if(type == 1){
+      fontSize++;
+    }else{
+      fontSize--;
+    }
+    textArea.setFont(new Font("Consolas",1,fontSize));
+    lineArea.setFont(new Font("Consolas",1,fontSize));
+  }
+
+  private void setComponentEvent(){
+    final UndoManager undoManager = new UndoManager();
+    textArea.getDocument().addUndoableEditListener(undoManager);
+    textArea.addKeyListener(new KeyAdapter(){
+      @Override
+      public void keyPressed(KeyEvent e){
+        if(isClickSave(e)){
+          var isWritten = TextFileHandler.writeTextToFile(textArea.getText(),filePath);
+          statuslabel.setText(filePath+" Saved.");
+        }
+        if(isFontMinimize(e)){
+          fontResize(0);
+        }
+        if(isFontMaximize(e)){
+          fontResize(1);
+        }
+        // System.out.println(e.getKeyCode());
+      }
+
+      public void keyReleased(KeyEvent e){
+        if(isClickSave(e)){
+          statuslabel.setText("Name: "+filePath +" "+"Size: "+TextFileHandler.getFileSize(filePath));
+        }
+        // System.out.println(e.getKeyCode());
+      }
+
+      @Override
+      public void keyTyped(KeyEvent e){
+        try{
+          if(e.getKeyChar() == 26){
+            undoManager.undo();
+          }
+          if(e.getKeyChar() == 25){
+            undoManager.redo();
+          }
+        }catch(Exception ex){
+
+        }
+      }
+
+    });
+  }
 }
 
 
