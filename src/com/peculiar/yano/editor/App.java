@@ -177,7 +177,7 @@ public class App extends JFrame{
      public void mouseWheelMoved(MouseWheelEvent e) {
       int notches = e.getWheelRotation();
       String message = "";
-      if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL) {
+      if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL && e.isControlDown()) {
         if (notches < 0) {
           fontSize++;
         } else {
