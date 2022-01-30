@@ -5,6 +5,7 @@ import java.awt.*;
 import javax.swing.*;
 import java.awt.event.*;
 
+import java.io.IOException;
 import javax.swing.JTextArea;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.DocumentEvent;
@@ -25,11 +26,12 @@ public class App extends JFrame{
   private Container ctpane;
   private MyTextArea textArea,lineArea;
   private JLabel statuslabel;
-  private String filePath;
+  private String filePath,fileContent;
   private int fontSize = 12;
 
   public App(String filePath){
     this.filePath = filePath;
+    this.fileContent = TextFileHandler.getTextFromFile(filePath);
     try{
       UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
     }catch(Exception ex){
@@ -52,7 +54,7 @@ public class App extends JFrame{
     menuPanel.setBackground(new Color(33,33,33));
     statusPanel.setBackground(new Color(33,33,33));
 
-    textArea = new MyTextArea(TextFileHandler.getTextFromFile(filePath));
+    textArea = new MyTextArea();
     lineArea = new MyTextArea("1");
     lineArea.setEditable(false);
     lineArea.setMargin(new Insets(10,10,10,10));
@@ -65,6 +67,7 @@ public class App extends JFrame{
     textArea.getDocument().addDocumentListener(new MyDocumentListener(textArea,lineArea));
 
 
+    textArea.setText(fileContent);
 
     textArea.setFont(new Font("Consolas",1,fontSize));
     lineArea.setFont(new Font("Consolas",1,fontSize));
@@ -73,7 +76,7 @@ public class App extends JFrame{
     jsp.setBorder(BorderFactory.createEmptyBorder());
     jsp.setRowHeaderView(lineArea);
     jsp.getViewport().add(textArea);
-    
+
 
     statuslabel = new JLabel("Name: "+filePath +" "+"Size: "+TextFileHandler.getFileSize(filePath));
     statuslabel.setFont(new Font("Consolas",1,14));
@@ -95,17 +98,7 @@ public class App extends JFrame{
     lineArea.setBackground(new Color(35,35,35));
     lineArea.setForeground(UI.FG_COLOR);
   }
-  private boolean isClickSave(KeyEvent e){
-    return e.isControlDown() && e.getKeyChar() != 's' && e.getKeyCode() == 83;
-  }
-
-  private boolean isFontMinimize(KeyEvent e){
-    return e.isControlDown() && e.getKeyChar() != '-' && e.getKeyCode() == 45;
-  }
-
-  private boolean isFontMaximize(KeyEvent e){
-    return e.isControlDown() && e.getKeyChar() != '+' && e.getKeyCode() == 61;
-  }
+  
 
   private void fontResize(int type){
     if(type == 1){
@@ -123,21 +116,42 @@ public class App extends JFrame{
     textArea.addKeyListener(new KeyAdapter(){
       @Override
       public void keyPressed(KeyEvent e){
-        if(isClickSave(e)){
+        if(KeyEventHandler.isClickSave(e)){
           var isWritten = TextFileHandler.writeTextToFile(textArea.getText(),filePath);
           statuslabel.setText(filePath+" Saved.");
         }
-        if(isFontMinimize(e)){
+        if(KeyEventHandler.isFontMinimize(e)){
           fontResize(0);
         }
-        if(isFontMaximize(e)){
+        if(KeyEventHandler.isFontMaximize(e)){
           fontResize(1);
+        }
+
+        if(KeyEventHandler.isOpenTerminal(e)){
+          try{
+            Runtime.getRuntime().exec("cmd /K start");
+          }catch(IOException ex){
+            System.out.println(ex);
+          }
+        }
+        if(KeyEventHandler.isOpenHelp(e)){
+          System.out.println("ctrl h\t\tshow this information");
+          System.out.println("ctrl s\t\tsave file");
+          System.out.println("ctrl +\t\tmaximize font size");
+          System.out.println("ctrl -\t\tminimize font size");
+          System.out.println("ctrl t\t\topen terminal");
+          System.out.println("ctrl e\t\texit");
+        }
+        if(KeyEventHandler.isExitClicked(e)){
+          var isWritten = TextFileHandler.writeTextToFile(textArea.getText(),filePath);
+          statuslabel.setText(filePath+"auto Saved.");
+          System.exit(0);
         }
         // System.out.println(e.getKeyCode());
       }
 
       public void keyReleased(KeyEvent e){
-        if(isClickSave(e)){
+        if(KeyEventHandler.isClickSave(e)){
           statuslabel.setText("Name: "+filePath +" "+"Size: "+TextFileHandler.getFileSize(filePath));
         }
         // System.out.println(e.getKeyCode());
@@ -158,13 +172,29 @@ public class App extends JFrame{
       }
 
     });
+
+    textArea.addMouseWheelListener(new MouseWheelListener(){
+     public void mouseWheelMoved(MouseWheelEvent e) {
+      int notches = e.getWheelRotation();
+      String message = "";
+      if (e.getScrollType() == MouseWheelEvent.WHEEL_UNIT_SCROLL) {
+        if (notches < 0) {
+          fontSize++;
+        } else {
+          fontSize--;
+        }
+        textArea.setFont(new Font("Consolas",1,fontSize));
+        lineArea.setFont(new Font("Consolas",1,fontSize));
+      }
+    }
+  });
   }
 }
 
 
 
 class MyTextArea extends javax.swing.JTextArea{
- MyTextArea(String name){
+ public MyTextArea(String name){
   super(name);
 }
 public MyTextArea(){
@@ -221,3 +251,27 @@ class MyDocumentListener implements DocumentListener{
 }
 
 
+class MyButton extends JButton{
+  Color oldFColor,oldBColor;
+  Color gFColor,gBColor;
+  private FocusListener focusListener = new FocusListener(){
+    public void focusGained(FocusEvent ev){
+      setBackground(gBColor);
+      setForeground(gFColor);
+    }
+    public void focusLost(FocusEvent ev){
+      setBackground(oldBColor);
+      setForeground(oldFColor);
+    }
+  };
+  MyButton(String name,Color gBColor,Color gFColor){
+    super(name);
+    this.gBColor = gBColor;
+    this.gFColor = gFColor;
+    
+    oldBColor = getBackground();
+    oldFColor = getForeground();
+    setFocusPainted(false);
+    addFocusListener(focusListener);
+  }
+}
