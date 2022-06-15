@@ -1,5 +1,5 @@
 # Yano Text Editor
 
-Text Editor for learning programming or doing experiment
+Text Editor for learning programming basic or doing fast experiment
 programming
 
